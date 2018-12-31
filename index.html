@@ -10,10 +10,11 @@
 
         <script>
             var geometry, material, mesh;
+            var ground, goalpost, player, keyboard;
 
             init();
             animate();
-            
+
             function init() {
             
                 camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
@@ -23,20 +24,26 @@
 
                 var ground = new Tepique.Ground(30, 15, 0x008000, 0xffffff);
                 var goalpost = new Tepique.GoalPost(ground, 0.33, 0xffffff);
+                var player = new Tepique.Player(1, 4, 0xffff00, 0.66, -5, 0, 0.1, 0.1);
+                ground.generateMesh();
+                goalpost.generateMesh();
+                player.generateMesh();
 
-                scene.add(ground.mesh());
-                scene.add(goalpost.mesh());
+                scene.add(ground.mesh);
+                scene.add(goalpost.mesh);
+                scene.add(player.mesh);
 
                 renderer = new THREE.WebGLRenderer( { antialias: true } );
                 renderer.setSize( window.innerWidth, window.innerHeight );
                 document.body.appendChild( renderer.domElement );
-            
+                
+                keyboard = new Tepique.KeyboardControl(player);
             }
             
             function animate() {
             
                 requestAnimationFrame( animate );
-            
+                keyboard.control();
                 renderer.render( scene, camera );
             
             }
