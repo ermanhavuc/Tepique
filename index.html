@@ -4,13 +4,15 @@
         <meta charset="utf-8">
         <title>Tepique!</title>
     </head>
-    <body>
+    <body bgcolor="#000000">
         <script src="three/build/three.js"></script>
+        <script src="three/examples/js/renderers/CSS2DRenderer.js"></script>
         <script src="lib/tepique.js"></script>
 
         <script>
             var geometry, material, mesh;
-            var ground, goalpost, player, keyboard, play;
+            var ground, goalpost, player, keyboard, play, gui;
+            var renderer, label_renderer;
 
             init();
             animate();
@@ -23,7 +25,7 @@
                 scene = new THREE.Scene();
 
                 var ground = new Tepique.Ground(30, 15, 0x008000, 0xffffff);
-                var goalpost = new Tepique.GoalPost(ground, 0.33, 0xffffff);
+                var goalpost = new Tepique.GoalPost(ground, 0.33, 0xffffff, 0x46aa46);
                 var player = new Tepique.Player(1, 4, 0xffff00, 0.66, -5, 0, 0.1, 0.1, 1);
                 var ball = new Tepique.Ball(0.35, 0x000080);
 
@@ -37,22 +39,36 @@
                 scene.add(player.mesh);
                 scene.add(ball.mesh);
 
-                renderer = new THREE.WebGLRenderer( { antialias: true } );
-                renderer.setSize( window.innerWidth, window.innerHeight );
-                document.body.appendChild( renderer.domElement );
-                
                 keyboard = new Tepique.KeyboardControl(player);
 
                 game = new Tepique.Game(ground, goalpost, player, ball, keyboard);
+
+                gui = new Tepique.GUI(game, 0xFFFFFF);
+                gui.place();
+
+                renderer = new THREE.WebGLRenderer( { antialias: true} );
+                renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth-10, window.innerHeight-20 );
+                renderer.setClearColor(0xFFFFFF, 0);
+                document.body.appendChild( renderer.domElement );
+
+                label_renderer = new THREE.CSS2DRenderer();
+				label_renderer.setSize( window.innerWidth-10, window.innerHeight-20 );
+				label_renderer.domElement.style.position = 'absolute';
+				label_renderer.domElement.style.top = 0;
+				document.body.appendChild( label_renderer.domElement );
             }
             
             function animate() {
             
                 requestAnimationFrame( animate );
+
                 keyboard.control();
                 game.play();
+                gui.update();
+
                 renderer.render( scene, camera );
-            
+                label_renderer.render( scene, camera );
             }
         </script>
     </body>
