@@ -2,7 +2,7 @@ import sys, getopt
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
-
+from mimetypes import guess_type
 
 class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
     pass
@@ -14,7 +14,7 @@ class TepiqueServer(BaseHTTPRequestHandler):
         try:
             f = open(self.path[1:], "rb")
             self.send_response(200)
-            self.send_header("Content-Type", "text/html")
+            self.send_header("Content-Type", guess_type(self.path[1:]))
             self.end_headers()
             self.wfile.write(f.read())
             f.close()

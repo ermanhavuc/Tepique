@@ -175,7 +175,7 @@ class Tepique {}
             group.add(text);
         }
         
-        loader.load( 'three/fonts/helvetiker_regular.typeface.json', function ( response ) {
+        loader.load( 'js/three/fonts/helvetiker_regular.typeface.json', function ( response ) {
             createText(response);
         } );
 
@@ -425,7 +425,7 @@ class Tepique {}
 }}
 
 {Tepique.KeyboardControl = class {
-    constructor(player, ball){
+    constructor(player){
         this.name = "keyboard";
         this.xSpeed = player.xSpeed;
         this.ySpeed = player.ySpeed;
@@ -437,7 +437,7 @@ class Tepique {}
         this.kick = false;
         this.init = function(){
             var script = document.createElement('script');
-            script.src = "lib/keyboardControl.js";
+            script.src = "js/tepique/keyboardControl.js";
             script.onload = function () {};
             document.body.appendChild(script);
         }();
