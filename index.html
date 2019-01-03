@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <title>Tepique!</title>
+		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     </head>
     <body bgcolor="#000000">
         <script src="js/three/build/three.js"></script>
@@ -24,10 +25,10 @@
 
                 scene = new THREE.Scene();
 
-                var ground = new Tepique.Ground(30, 15, 0x008000, 0xffffff);
+                var ground = new Tepique.Ground(30, 15, 0x008000, 0xffffff, 0.1);
                 var goalpost = new Tepique.GoalPost(ground, 0.33, 0xffffff, 0x46aa46);
-                var player = new Tepique.Player(1, 4, 0xffff00, 0.66, -5, 0, 0.1, 0.1, 1);
-                var ball = new Tepique.Ball(0.35, 0x000080);
+                var player = new Tepique.Player(1, 4, 0xffff00, 0.66, -5, 0, 0.1, 1.5);
+                var ball = new Tepique.Ball(0.35, 0x000080, 0.01);
 
                 ground.generateMesh();
                 goalpost.generateMesh();
