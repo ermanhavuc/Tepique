@@ -2,12 +2,12 @@ class Tepique {}
 
 {Tepique.Ground = class {
 
-    constructor(width, height, ground_color, line_color, feature){
+    constructor(width, height, ground_color, line_color, co_fri){
         this.width = width;
         this.height = height;
         this.ground_color = ground_color;
         this.line_color = line_color;
-        this.feature = feature;
+        this.co_fri = co_fri;
         this.mesh = undefined;
     }
     
@@ -56,8 +56,8 @@ class Tepique {}
     set ground_color(ground_color){this._ground_color = ground_color;}
     get line_color(){return this._line_color;}
     set line_color(line_color){this._line_color = line_color;}
-    get feature(){return this._feature;}
-    set feature(feature){this._feature = feature;}
+    get co_fri(){return this._co_fri;}
+    set co_fri(co_fri){this._co_fri = co_fri;}
     get mesh(){return this._mesh;}
     set mesh(mesh){this._mesh = mesh;}
     
@@ -130,15 +130,14 @@ class Tepique {}
 }}
 
 {Tepique.Player = class {
-    constructor(team, number, color, radius, x, y, xSpeed, ySpeed, kickSpeed){
+    constructor(team, number, color, radius, x, y, speed, kickSpeed){
         this.team = team;
         this.number = number;
         this.color = color;
         this.radius = radius;
         this.x = x;
         this.y = y;
-        this.xSpeed = xSpeed;
-        this.ySpeed = ySpeed;
+        this.speed = speed;
         this.kickSpeed = kickSpeed;
         this.mesh = undefined;
     }
@@ -203,10 +202,13 @@ class Tepique {}
 }}
 
 {Tepique.Ball = class {
-    constructor(radius, color){
+    constructor(radius, color, accel){
         this.radius = radius;
         this.color = color;
+        this.accel = accel;
         this.mesh = undefined;
+        this.speed = 0;
+        this.radian = 0;
     }
 
     generateMesh(){
@@ -227,6 +229,13 @@ class Tepique {}
 
         return group;
     }
+
+    get accel(){return this._accel;}
+    set accel(accel){this._accel = accel;}
+    get speed(){return this._speed;}
+    set speed(speed){this._speed = speed;}
+    get radian(){return this._radian;}
+    set radian(radian){this._radian = radian;}
 }}
 
 {Tepique.Game = class {
@@ -238,14 +247,15 @@ class Tepique {}
         this.control = control;
         this.score = [0,0];
         this.isGoal = [false, false];
-        this.clock = new THREE.Clock(false);
+        this.goal_clock = new THREE.Clock(false);
+        this.game_clock = new THREE.Clock(false);
     }
 
     play(){
         this.borders(this.player);
         this.borders(this.ball);
-        this.ballCollision();
         this.kickBall();
+        this.ballAnimation();
         this.goal();
     }
 
@@ -256,15 +266,28 @@ class Tepique {}
         var y_border = this.ground.height/2;
         var goalpost_up = this.goalpost.getUpperDot();
         var goalpost_lower = this.goalpost.getLowerDot();
+        var isBall = object instanceof Tepique.Ball;
 
         if(x >= x_border-object.radius && (y >= goalpost_up || y <= goalpost_lower)){
             object.mesh.position.x = x_border-object.radius;
+            if(isBall){
+                object.radian = Math.PI - object.radian;
+            }
         }else if(y >= y_border-object.radius){
             object.mesh.position.y = y_border-object.radius;
+            if(isBall){
+                object.radian = -object.radian;
+            }
         }else if(x <= -x_border+object.radius && (y >= goalpost_up || y <= goalpost_lower)){
             object.mesh.position.x = -x_border+object.radius;
+            if(isBall){
+                object.radian = Math.PI - object.radian;
+            }
         }else if(y <= -y_border+object.radius){
             object.mesh.position.y = -y_border+object.radius;
+            if(isBall){
+                object.radian = -object.radian;
+            }
         }
 
         if(x >= x_border-object.radius && y >= y_border-object.radius){
@@ -281,17 +304,6 @@ class Tepique {}
             object.mesh.position.y = y_border-object.radius;
         }
 
-    }
-
-    ballCollision(){
-        var player = this.player;
-        var ball = this.ball;
-        
-        if(this.isCollision(player, ball) == 0){
-            var rad = this.radian(player, ball);
-            ball.mesh.position.x += Math.cos(rad)*0.1;
-            ball.mesh.position.y += Math.sin(rad)*0.1;
-        }
     }
 
     isCollision(){
@@ -326,10 +338,23 @@ class Tepique {}
     kickBall(){
         if(this.isCollision(this.player, this.ball) == 1){
             if(this.control.name == "keyboard" && this.control.kick){
-                var rad = this.radian(this.player, this.ball);
-                this.ball.mesh.position.x += Math.cos(rad)*this.player.kickSpeed;
-                this.ball.mesh.position.y += Math.sin(rad)*this.player.kickSpeed;
+                this.ball.radian = this.radian(this.player, this.ball);
+                this.ball.speed = this.player.kickSpeed;
             }
+        }
+    }
+
+    ballAnimation(){
+        if(this.ball.speed > 0){
+            this.ball.mesh.position.x += Math.cos(this.ball.radian)*this.ball.speed*this.ground.co_fri;
+            this.ball.mesh.position.y += Math.sin(this.ball.radian)*this.ball.speed*this.ground.co_fri;
+            this.ball.speed -= this.ball.accel;
+        }
+        if(this.isCollision(this.player, this.ball) == 0){
+            this.ball.radian = this.radian(this.player, this.ball);
+            this.ball.mesh.position.x += Math.cos(this.ball.radian)*0.1;
+            this.ball.mesh.position.y += Math.sin(this.ball.radian)*0.1;
+            this.ball.speed -= this.player.speed;
         }
     }
 
@@ -339,17 +364,17 @@ class Tepique {}
         if(ballx >= this.ground.width/2 && !this.isGoal[0]){
             this.score[0]++;
             this.isGoal[0] = true;
-            this.clock.start();
+            this.goal_clock.start();
         }else if(ballx <= -this.ground.width/2 && !this.isGoal[1]){
             this.score[1]++;
             this.isGoal[1] = true;
-            this.clock.start();
+            this.goal_clock.start();
         }
         if(this.isGoal[0] || this.isGoal[1]){
-            if(this.clock.getElapsedTime() >= 3){
+            if(this.goal_clock.getElapsedTime() >= 3){
                 this.refresh();
                 this.isGoal = [false, false];
-                this.clock.stop();
+                this.goal_clock.stop();
             }
         }
     }
@@ -357,6 +382,8 @@ class Tepique {}
     refresh(){
         this.player.mesh.position.set(this.player.x, this.player.y, 0.00001);
         this.ball.mesh.position.set(0, 0, 0.00001);
+        this.ball.radian = 0;
+        this.ball.speed = 0;
     }
 
     get ground(){return this._ground;}
@@ -410,7 +437,7 @@ class Tepique {}
     }
 
     updateGoalClock(){
-        var elapsed_time = this.game.clock.getElapsedTime();
+        var elapsed_time = this.game.goal_clock.getElapsedTime();
         var countdown = 3-Math.floor(elapsed_time);
         if(elapsed_time == 0 || countdown == 0){
             this.goal_clock.textContent = "";
@@ -427,8 +454,7 @@ class Tepique {}
 {Tepique.KeyboardControl = class {
     constructor(player){
         this.name = "keyboard";
-        this.xSpeed = player.xSpeed;
-        this.ySpeed = player.ySpeed;
+        this.speed = player.speed;
         this.player = player;
         this.up = false;
         this.down = false;
@@ -445,16 +471,16 @@ class Tepique {}
 
     control(){
         if (this.up){
-            this.player.mesh.position.y += this.ySpeed;
+            this.player.mesh.position.y += this.speed;
         }
         if (this.right){
-            this.player.mesh.position.x += this.xSpeed;
+            this.player.mesh.position.x += this.speed;
         }
         if (this.down){
-            this.player.mesh.position.y -= this.ySpeed;
+            this.player.mesh.position.y -= this.speed;
         }
         if (this.left){
-            this.player.mesh.position.x -= this.xSpeed;
+            this.player.mesh.position.x -= this.speed;
         }
     }
 
@@ -470,8 +496,6 @@ class Tepique {}
     set name(name){this._name = name;}
     get kick(){return this._kick;}
     set kick(kick){this._kick = kick;}
-    get xSpeed(){return this._xSpeed;}
-    set xSpeed(xSpeed){this._xSpeed = xSpeed;}
-    get ySpeed(){return this._ySpeed;}
-    set ySpeed(ySpeed){this._ySpeed = ySpeed;}
+    get speed(){return this._speed;}
+    set speed(speed){this._speed = speed;}
 }}
