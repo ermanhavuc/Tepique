@@ -1,4 +1,4 @@
-import sys, getopt
+import sys, socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from mimetypes import guess_type
@@ -25,7 +25,8 @@ class TepiqueServer(BaseHTTPRequestHandler):
         except IOError:
             self.send_error(404, "File Not Found")
 
-IP = "192.168.0.10"
+
+IP = socket.gethostbyname(socket.getfqdn())
 PORT = 80
 
 server = ThreadingSimpleServer((IP, PORT), TepiqueServer)
