@@ -36,15 +36,6 @@ class Tepique {}
         this.renderer.render( this.scene, this.camera );
         this.label_renderer.render( this.scene, this.camera );
     }
-
-    get scene(){return this._scene;}
-    set scene(scene){this._scene = scene;}
-    get renderer(){return this._renderer;}
-    set renderer(renderer){this._renderer = renderer;}
-    get label_renderer(){return this._label_renderer;}
-    set label_renderer(label_renderer){this._label_renderer = label_renderer;}
-    get camera(){return this._camera;}
-    set camera(camera){this._camera = camera;}
 }}
 
 {Tepique.Ground = class {
@@ -166,14 +157,6 @@ class Tepique {}
 
     getUpperDot(){return this.ground.height/2*this.ratio;}
     getLowerDot(){return -this.ground.height/2*this.ratio;}
-    get ratio(){return this._ratio;}
-    set ratio(ratio){this._ratio = ratio;}
-    get color(){return this._color;}
-    set color(color){this._color = color;}
-    get width(){return this._width;}
-    set width(width){this._width = width;}
-    get mesh(){return this._mesh;}
-    set mesh(mesh){this._mesh = mesh;}
 }}
 
 {Tepique.Player = class {
@@ -232,19 +215,6 @@ class Tepique {}
 
         return group;
     }
-
-    get x(){return this._x;}
-    set x(x){this._x = x;}
-    get y(){return this._y;}
-    set y(y){this._y = y;}
-    get kickSpeed(){return this._kickSpeed;}
-    set kickSpeed(kickSpeed){this._kickSpeed = kickSpeed;}
-    get speed_limit(){return this._speed_limit;}
-    set speed_limit(speed_limit){this._speed_limit = speed_limit;}
-    get speed(){return this._speed;}
-    set speed(speed){this._speed = speed;}
-    get mesh(){return this._mesh;}
-    set mesh(mesh){this._mesh = mesh;}
 }}
 
 {Tepique.Ball = class {
@@ -276,13 +246,6 @@ class Tepique {}
 
         return group;
     }
-
-    get accel(){return this._accel;}
-    set accel(accel){this._accel = accel;}
-    get speed(){return this._speed;}
-    set speed(speed){this._speed = speed;}
-    get radian(){return this._radian;}
-    set radian(radian){this._radian = radian;}
 }}
 
 {Tepique.Game = class {
@@ -421,13 +384,11 @@ class Tepique {}
         }
         if(this.isCollision(this.player, this.ball) == 0){
             this.ball.radian = this.radian(this.player, this.ball);
-            this.ball.mesh.position.x += Math.cos(this.ball.radian)*0.04;
-            this.ball.mesh.position.y += Math.sin(this.ball.radian)*0.04;
+            this.ball.mesh.position.x += Math.cos(this.ball.radian)*0.05;
+            this.ball.mesh.position.y += Math.sin(this.ball.radian)*0.05;
             if(this.ball.speed <= 0){
                 this.ball.radian = this.radian(this.player, this.ball);
                 this.ball.speed = this.player.speed*5;
-                this.ball.mesh.position.x += Math.cos(this.ball.radian)*this.ball.speed*this.ground.co_fri;
-                this.ball.mesh.position.y += Math.sin(this.ball.radian)*this.ball.speed*this.ground.co_fri;
             }else{
                 this.ball.radian = this.radian(this.player, this.ball);
                 this.ball.speed = this.ball.speed-this.player.speed;
@@ -459,15 +420,16 @@ class Tepique {}
     }
 
     playerSpeed(){
-        if(this.isCollision(this.player, this.ball) == 0){
-            this.player.speed = this.player.speed_limit/1.5;
-        }else{
-            this.player.speed = this.player.speed_limit;
-        }
         if(this.control_method instanceof Tepique.KeyboardControl){
             if(!this.control_method.up && !this.control_method.right && !this.control_method.down
                 && !this.control_method.left){
                 this.player.speed = 0;
+            }else{
+                if(this.isCollision(this.player, this.ball) != 0){
+                    this.player.speed = this.player.speed_limit;
+                }else{
+                    this.player.speed = this.player.speed_limit/1.5;
+                }
             }
         }
     }
@@ -521,15 +483,6 @@ class Tepique {}
     remainingTime(){
         this.remaining_time = this.duration-Math.floor(this.game_clock.getElapsedTime())
     }
-
-    get remaining_time(){return this._remaining_time;}
-    set remaining_time(remaining_time){this._remaining_time = remaining_time;}
-    get ground(){return this._ground;}
-    set ground(ground){this._ground = ground;}
-    get score(){return this._score;}
-    set score(score){this._score = score;}
-    get clock(){return this._clock;}
-    set clock(clock){this._clock = clock;}
 }}
 
 {Tepique.GUI = class {
@@ -676,19 +629,4 @@ class Tepique {}
         this.move_downleft = (this.down && this.left && !this.up && !this.right) ? true : false;
         this.move_upleft = (this.left && this.up && !this.right && !this.down) ? true : false;
     }
-
-    get up(){return this._up;}
-    set up(up){this._up = up;}
-    get down(){return this._down;}
-    set down(down){this._down = down;}
-    get left(){return this._left;}
-    set left(left){this._left = left;}
-    get right(){return this._right;}
-    set right(right){this._right = right;}
-    get name(){return this._name;}
-    set name(name){this._name = name;}
-    get kick(){return this._kick;}
-    set kick(kick){this._kick = kick;}
-    get speed(){return this._speed;}
-    set speed(speed){this._speed = speed;}
 }}
