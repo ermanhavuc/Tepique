@@ -1,16 +1,18 @@
 class Tepique {}
 
-{Tepique.Environment = class{
-    constructor(){
+{Tepique.Environment = class {
+    constructor(camera_position){
+        this.camera_position = camera_position;
         this.camera = undefined;
         this.scene = undefined;
         this.renderer = undefined;
         this.label_renderer = undefined;
+        this.physics = undefined;
     }
 
     create(){
         this.camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
-        this.camera.position.z = 15;
+        this.camera.position.z = this.camera_position;
 
         this.scene = new THREE.Scene();
 
@@ -25,6 +27,10 @@ class Tepique {}
         this.label_renderer.domElement.style.position = 'absolute';
         this.label_renderer.domElement.style.top = 0;
         document.body.appendChild( this.label_renderer.domElement );
+
+        this.physics = new p2.World({
+            gravity: [0, 0]
+        });
     }
 
     animation(game, gui){
@@ -36,6 +42,36 @@ class Tepique {}
         this.renderer.render( this.scene, this.camera );
         this.label_renderer.render( this.scene, this.camera );
     }
+
+    setWalls(physics){
+        for(let i=0; i < physics.bodies.length; i++){
+            if(physics.bodies[i].name == "wall"){
+                let line = physics.bodies[i];
+                physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(99).shapes[0].material, {
+                    restitution: 1,
+                    stiffness: Number.MAX_VALUE,
+                    friction: 0
+                }));
+                physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(21).shapes[0].material, {
+                    restitution: 0,
+                    stiffness: Number.MAX_VALUE,
+                    friction: 0
+                }));
+            }else if(physics.bodies[i].name == "goalpost"){
+                let line = physics.bodies[i];
+                physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(99).shapes[0].material, {
+                    restitution: 0,
+                    stiffness: Number.MAX_VALUE,
+                    friction: 0
+                }));
+                physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(21).shapes[0].material, {
+                    restitution: 0,
+                    stiffness: Number.MAX_VALUE,
+                    friction: 0
+                }));
+            }
+        }
+    }
 }}
 
 {Tepique.Ground = class {
@@ -44,19 +80,18 @@ class Tepique {}
         this.height = height;
         this.ground_color = ground_color;
         this.line_color = line_color;
-        this.co_fri = co_fri;
         this.mesh = undefined;
     }
     
-    generateMesh(){
+    generate(scene, physics){
         let material, geometry;
-        var group = new THREE.Group();
+        let group = new THREE.Group();
 
         geometry = new THREE.PlaneBufferGeometry(this.width, this.height);
-        material = new THREE.MeshBasicMaterial( { color: this.ground_color} );
+        material = new THREE.MeshBasicMaterial( { color: this.ground_color } );
         group.add(new THREE.Mesh(geometry, material));
 
-        var circle_radius = this.height/7;
+        let circle_radius = this.height/7;
 
         material = new THREE.LineBasicMaterial( { color: this.line_color } );
         geometry = new THREE.CircleGeometry(circle_radius, 64);
@@ -80,24 +115,29 @@ class Tepique {}
         geometry = new THREE.CircleGeometry( circle_radius/10, 64 );
         group.add(new THREE.Mesh( geometry, material ));
 
+        scene.add(group);
         this.mesh = group;
 
-        return group;
-    }
+        let line_shape, line;
+        
+        line_shape = new p2.Line({material: new p2.Material()});
+        line = new p2.Body({
+            position: [0, this.height/2]
+        });
+        line_shape.length = this.width;
+        line.name = "wall";
+        line.addShape(line_shape);
+        physics.addBody(line);
 
-    get width(){return this._width;}
-    set width(width){this._width = width;}
-    get height(){return this._height;}
-    set height(height){this._height = height;}
-    get ground_color(){return this._ground_color;}
-    set ground_color(ground_color){this._ground_color = ground_color;}
-    get line_color(){return this._line_color;}
-    set line_color(line_color){this._line_color = line_color;}
-    get co_fri(){return this._co_fri;}
-    set co_fri(co_fri){this._co_fri = co_fri;}
-    get mesh(){return this._mesh;}
-    set mesh(mesh){this._mesh = mesh;}
-    
+        line_shape = new p2.Line({material: new p2.Material()});
+        line = new p2.Body({
+            position: [0, -this.height/2]
+        });
+        line_shape.length = this.width;
+        line.name = "wall";
+        line.addShape(line_shape);
+        physics.addBody(line);
+    }
 }}
 
 {Tepique.GoalPost = class {
@@ -108,10 +148,9 @@ class Tepique {}
         this.ground_color = ground_color;
         this.width = undefined;
         this.height = undefined;
-        this.mesh = undefined;
     }
 
-    generateMesh(){
+    generate(scene, physics){
         let material, geometry, mesh;
 
         material = new THREE.LineBasicMaterial( { color: this.line_color } );
@@ -150,9 +189,105 @@ class Tepique {}
         mesh.position.x = ground_width/2+this.width/2;
         group.add(mesh);
 
-        this.mesh = group;
+        scene.add(group);
 
-        return group;
+        let line, line_shape;
+
+        line_shape = new p2.Line({material: new p2.Material()}); //right upper
+        line = new p2.Body({
+            position: [ground_width/2, this.height],
+            angle: Math.PI/2
+        });
+        line_shape.length = this.height;
+        line.name = "wall";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //right lower
+        line = new p2.Body({
+            position: [ground_width/2, -this.height],
+            angle: Math.PI/2
+        });
+        line_shape.length = this.height;
+        line.name = "wall";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //left upper
+        line = new p2.Body({
+            position: [-ground_width/2, this.height],
+            angle: Math.PI/2
+        });
+        line_shape.length = this.height;
+        line.name = "wall";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //left lower
+        line = new p2.Body({
+            position: [-ground_width/2, -this.height],
+            angle: Math.PI/2
+        });
+        line_shape.length = this.height;
+        line.name = "wall";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //left goalpost upper
+        line = new p2.Body({
+            position: [-(ground_width/2+this.width/2), this.height/2]
+        });
+        line_shape.length = this.width;
+        line.name = "goalpost";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //left goalpost side
+        line = new p2.Body({
+            position: [-(ground_width/2+this.width), 0],
+            angle: Math.PI/2
+        });
+        line_shape.length = this.height;
+        line.name = "goalpost";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //left goalpost bottom
+        line = new p2.Body({
+            position: [-(ground_width/2+this.width/2), -this.height/2]
+        });
+        line_shape.length = this.width;
+        line.name = "goalpost";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //right goalpost upper
+        line = new p2.Body({
+            position: [ground_width/2+this.width/2, this.height/2]
+        });
+        line_shape.length = this.width;
+        line.name = "goalpost";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //right goalpost side
+        line = new p2.Body({
+            position: [ground_width/2+this.width, 0],
+            angle: Math.PI/2
+        });
+        line_shape.length = this.height;
+        line.name = "goalpost";
+        line.addShape(line_shape);
+        physics.addBody(line);
+
+        line_shape = new p2.Line({material: new p2.Material()}); //right goalpost bottom
+        line = new p2.Body({
+            position: [ground_width/2+this.width/2, -this.height/2]
+        });
+        line_shape.length = this.width;
+        line.name = "goalpost";
+        line.addShape(line_shape);
+        physics.addBody(line);
     }
 
     getUpperDot(){return this.ground.height/2*this.ratio;}
@@ -160,20 +295,19 @@ class Tepique {}
 }}
 
 {Tepique.Player = class {
-    constructor(team, number, color, radius, x, y, speed_limit, kickSpeed){
+    constructor(team, number, color, radius, x, y, kickSpeed, mass, damping){
         this.team = team;
         this.number = number;
         this.color = color;
         this.radius = radius;
         this.x = x;
         this.y = y;
-        this.speed_limit = speed_limit;
         this.kickSpeed = kickSpeed;
-        this.speed = undefined;
-        this.mesh = undefined;
+        this.mass = mass;
+        this.damping = damping;
     }
 
-    generateMesh(){
+    generate(scene, physics){
         let material, geometry;
 
         var group = new THREE.Group();
@@ -181,7 +315,7 @@ class Tepique {}
         var num = this.number;
 
         material = new THREE.MeshBasicMaterial( { color: this.color } );
-        geometry = new THREE.CircleGeometry( this.radius, 64 );
+        geometry = new THREE.CircleBufferGeometry( this.radius, 64 );
         group.add(new THREE.Mesh( geometry, material ));
 
         material = new THREE.LineBasicMaterial( { color: 0x000000 } );
@@ -210,30 +344,44 @@ class Tepique {}
         } );
 
         group.position.set(this.x, this.y, 0.00001);
+        group.userData = this.radius;
+        scene.add(group);
 
-        this.mesh = group;
-
-        return group;
+        let player_shape = new p2.Circle({
+            radius: this.radius,
+            material: new p2.Material()
+        });
+        let player = new p2.Body({
+            position: [0, 0],
+            mass: this.mass,
+            damping: this.damping,
+            angularDamping: 1
+        });
+        player.addShape(player_shape);
+        player.data = group;
+        player.name = "player";
+        player.id = 21;
+        player.position[0] = this.x;
+        player.position[1] = this.y;
+        physics.addBody(player);
     }
 }}
 
 {Tepique.Ball = class {
-    constructor(radius, color, accel){
+    constructor(radius, color, mass, damping){
         this.radius = radius;
         this.color = color;
-        this.accel = accel;
-        this.mesh = undefined;
-        this.speed = 0;
-        this.radian = 0;
+        this.mass = mass;
+        this.damping = damping;
     }
 
-    generateMesh(){
+    generate(scene, physics){
 
         let material, geometry;
         var group = new THREE.Group();
 
         material = new THREE.MeshBasicMaterial( { color: this.color } );
-        geometry = new THREE.CircleGeometry( this.radius, 64 );
+        geometry = new THREE.CircleBufferGeometry( this.radius, 64 );
         group.add(new THREE.Mesh( geometry, material ));
 
         material = new THREE.LineBasicMaterial( { color: 0x000000 } );
@@ -242,104 +390,67 @@ class Tepique {}
         group.add(new THREE.LineLoop( geometry, material ));
 
         group.position.z = 0.00001;
-        this.mesh = group;
+        group.userData = this.radius;
+        scene.add(group);
 
-        return group;
+        let ball_shape = new p2.Circle({
+            radius: this.radius,
+            material: new p2.Material()
+        });
+        let ball = new p2.Body({
+            position: [0, 0],
+            mass: this.mass,
+            damping: this.damping,
+            angularDamping: 1
+        });
+        ball.addShape(ball_shape);
+        ball.data = group;
+        ball.name = "ball";
+        ball.id = 99;
+        physics.addBody(ball);
     }
 }}
 
 {Tepique.Game = class {
-    constructor(environment, ground, goalpost, players, ball, control_method, duration){
+    constructor(environment, ground, goalpost, players, ball, control_method, duration, score_limit){
         this.environment = environment;
         this.ground = ground;
         this.goalpost = goalpost;
         this.player = players;
         this.ball = ball;
         this.control_method = control_method;
+        this.duration = duration;
+        this.score_limit = score_limit;
+        this.action = true;
         this.score = [0,0];
         this.isGoal = [false, false];
         this.goal_clock = new THREE.Clock(false);
         this.game_clock = new THREE.Clock(true);
-        this.duration = duration;
         this.remaining_time = duration;
         this.init = function(){
             environment.create();
-            ground.generateMesh();
-            goalpost.generateMesh();
-            players.generateMesh();
-            ball.generateMesh();
-
-            environment.scene.add(ground.mesh);
-            environment.scene.add(goalpost.mesh);
-            environment.scene.add(players.mesh);
-            environment.scene.add(ball.mesh);
-
+            ground.generate(environment.scene, environment.physics);
+            goalpost.generate(environment.scene, environment.physics);
+            players.generate(environment.scene, environment.physics);
+            ball.generate(environment.scene, environment.physics);
+            environment.setWalls(environment.physics);
             control_method.generate();
         }();
     }
 
     play(){
-        this.playerControl();
-        this.borders(this.player);
-        this.borders(this.ball);
-        this.kickBall();
-        this.playerSpeed();
-        this.ballAnimation();
-        this.goal();
+        if(this.action){
+            this.environment.physics.step(1/60);
+            this.playerControl();
+            this.gameAnimation();
+            this.kickBall();
+            this.goal();
+        }
         this.remainingTime();
-        //this.playerAnimation();
     }
 
-    borders(object){
-        var x = object.mesh.position.x;
-        var y = object.mesh.position.y;
-        var x_border = this.ground.width/2;
-        var y_border = this.ground.height/2;
-        var goalpost_up = this.goalpost.getUpperDot();
-        var goalpost_lower = this.goalpost.getLowerDot();
-        var isBall = object instanceof Tepique.Ball;
-
-        if(x >= x_border-object.radius && (y >= goalpost_up || y <= goalpost_lower)){
-            object.mesh.position.x = x_border-object.radius;
-            if(isBall){
-                object.radian = Math.PI - object.radian;
-            }
-        }else if(y >= y_border-object.radius){
-            object.mesh.position.y = y_border-object.radius;
-            if(isBall){
-                object.radian = -object.radian;
-            }
-        }else if(x <= -x_border+object.radius && (y >= goalpost_up || y <= goalpost_lower)){
-            object.mesh.position.x = -x_border+object.radius;
-            if(isBall){
-                object.radian = Math.PI - object.radian;
-            }
-        }else if(y <= -y_border+object.radius){
-            object.mesh.position.y = -y_border+object.radius;
-            if(isBall){
-                object.radian = -object.radian;
-            }
-        }
-
-        if(x >= x_border-object.radius && y >= y_border-object.radius){
-            object.mesh.position.x = x_border-object.radius;
-            object.mesh.position.y = y_border-object.radius;
-        }else if(x >= x_border-object.radius && y <= -y_border+object.radius){
-            object.mesh.position.x = x_border-object.radius;
-            object.mesh.position.y = -y_border+object.radius;
-        }else if(x <= -x_border+object.radius && y <= -y_border+object.radius){
-            object.mesh.position.x = -x_border+object.radius;
-            object.mesh.position.y = -y_border+object.radius;
-        }else if(y >= y_border-object.radius && x <= -x_border+object.radius){
-            object.mesh.position.x = -x_border+object.radius;
-            object.mesh.position.y = y_border-object.radius;
-        }
-
-    }
-
-    isCollision(){
-        var dist = this.distance(this.ball, this.player);
-
+    isCollision(ball, player){
+        var dist = this.distance(ball, player);
         if(dist <= (this.ball.radius + this.player.radius)){    //touch
             return 0;
         }else if(dist <= (this.ball.radius + this.player.radius+0.1)){  //so close
@@ -350,14 +461,13 @@ class Tepique {}
     }
 
     distance(object1, object2){
-        var dx = object1.mesh.position.x - object2.mesh.position.x;
-        var dy = object1.mesh.position.y - object2.mesh.position.y;
+        var dx = object1.position[0] - object2.position[0];
+        var dy = object1.position[1] - object2.position[1];
         return Math.sqrt(dx*dx + dy*dy);
     }
 
     radian(object1, object2){
-        var rad = Math.atan2(object1.mesh.position.y - object2.mesh.position.y, 
-            object1.mesh.position.x - object2.mesh.position.x);
+        var rad = Math.atan2(object1.position[1] - object2.position[1], object1.position[0] - object2.position[0]);
         var invertedRad;
         if(rad <= 0){
             invertedRad = rad + Math.PI;
@@ -368,38 +478,21 @@ class Tepique {}
     }
 
     kickBall(){
-        if(this.isCollision(this.player, this.ball) == 1 || this.isCollision(this.player, this.ball) == 0){
+        let ball = this.environment.physics.getBodyById(99);
+        let player = this.environment.physics.getBodyById(21);
+        let col = this.isCollision(ball, player);
+        if(col == 1 || col == 0){
             if(this.control_method instanceof Tepique.KeyboardControl && this.control_method.kick){
-                this.ball.radian = this.radian(this.player, this.ball);
-                this.ball.speed = this.player.kickSpeed;
-            }
-        }
-    }
-
-    ballAnimation(){
-        if(this.ball.speed > 0){
-            this.ball.mesh.position.x += Math.cos(this.ball.radian)*this.ball.speed*this.ground.co_fri;
-            this.ball.mesh.position.y += Math.sin(this.ball.radian)*this.ball.speed*this.ground.co_fri;
-            this.ball.speed -= this.ball.accel;
-        }
-        if(this.isCollision(this.player, this.ball) == 0){
-            this.ball.radian = this.radian(this.player, this.ball);
-            this.ball.mesh.position.x += Math.cos(this.ball.radian)*0.05;
-            this.ball.mesh.position.y += Math.sin(this.ball.radian)*0.05;
-            if(this.ball.speed <= 0){
-                this.ball.radian = this.radian(this.player, this.ball);
-                this.ball.speed = this.player.speed*5;
-            }else{
-                this.ball.radian = this.radian(this.player, this.ball);
-                this.ball.speed = this.ball.speed-this.player.speed;
-                this.ball.mesh.position.x += Math.cos(this.ball.radian)*this.ball.speed*this.ground.co_fri;
-                this.ball.mesh.position.y += Math.sin(this.ball.radian)*this.ball.speed*this.ground.co_fri;
+                let radian = this.radian(player, ball);
+                ball.velocity[0] = ball.velocity[0] + this.player.kickSpeed * Math.cos(radian);
+                ball.velocity[1] = ball.velocity[1] + this.player.kickSpeed * Math.sin(radian);
             }
         }
     }
 
     goal(){
-        var ballx = this.ball.mesh.position.x;
+        let physics = this.environment.physics;
+        var ballx = physics.getBodyById(99).position[0];
 
         if(ballx >= this.ground.width/2 && !this.isGoal[0]){
             this.score[0]++;
@@ -410,8 +503,12 @@ class Tepique {}
             this.isGoal[1] = true;
             this.goal_clock.start();
         }
+
         if(this.isGoal[0] || this.isGoal[1]){
             if(this.goal_clock.getElapsedTime() >= 3){
+                if(this.score[0] == this.score_limit || this.score[1] == this.score_limit){
+                    this.action = false;
+                }
                 this.refresh();
                 this.isGoal = [false, false];
                 this.goal_clock.stop();
@@ -419,69 +516,76 @@ class Tepique {}
         }
     }
 
-    playerSpeed(){
+    gameAnimation(){
+        let ball = this.environment.physics.getBodyById(99);
+        let player = this.environment.physics.getBodyById(21);
+
+        ball.data.position.x = ball.position[0];
+        ball.data.position.y = ball.position[1];
+        player.data.position.x = player.position[0];
+        player.data.position.y = player.position[1];
+    }
+
+    playerControl(){
+        let physics = this.environment.physics;
         if(this.control_method instanceof Tepique.KeyboardControl){
-            if(!this.control_method.up && !this.control_method.right && !this.control_method.down
-                && !this.control_method.left){
-                this.player.speed = 0;
-            }else{
-                if(this.isCollision(this.player, this.ball) != 0){
-                    this.player.speed = this.player.speed_limit;
-                }else{
-                    this.player.speed = this.player.speed_limit/1.5;
+            this.control_method.control();
+            for(let i = 0; i < physics.bodies.length; i++){
+                let body = physics.bodies[i];
+
+                if(body.name == "player"){
+                    if (this.control_method.move_up){    //up
+                        body.force[1] += 5;
+                    }
+                    if (this.control_method.move_right){    //right
+                        body.force[0] += 5;
+                    }
+                    if (this.control_method.move_down){    //down
+                        body.force[1] -= 5;
+                    }
+                    if (this.control_method.move_left){    //left
+                        body.force[0] -= 5;
+                    }
+                    if (this.control_method.move_upright){     //upright
+                        body.force[1] += 5/Math.sqrt(2);
+                        body.force[0] += 5/Math.sqrt(2);
+                    }
+                    if (this.control_method.move_downright){     //downright
+                        body.force[0] += 5/Math.sqrt(2);
+                        body.force[1] -= 5/Math.sqrt(2);
+                    }
+                    if (this.control_method.move_downleft){     //downleft
+                        body.force[1] -= 5/Math.sqrt(2);
+                        body.force[0] -= 5/Math.sqrt(2);
+                    }
+                    if (this.control_method.move_upleft){    //upleft
+                        body.force[0] -= 5/Math.sqrt(2);
+                        body.force[1] += 5/Math.sqrt(2);
+                    }
                 }
             }
         }
     }
 
-    playerAnimation(){
-        if(this.player.speed > 0){
-        }
-    }
-
-    playerControl(){
-        if(this.control_method instanceof Tepique.KeyboardControl){
-            this.control_method.control();
-            if (this.control_method.move_up){    //up
-                this.player.mesh.position.y += this.player.speed;
-            }
-            if (this.control_method.move_right){    //right
-                this.player.mesh.position.x += this.player.speed;
-            }
-            if (this.control_method.move_down){    //down
-                this.player.mesh.position.y -= this.player.speed;
-            }
-            if (this.control_method.move_left){    //left
-                this.player.mesh.position.x -= this.player.speed;
-            }
-            if (this.control_method.move_upright){     //upright
-                this.player.mesh.position.y += this.player.speed/Math.sqrt(2);
-                this.player.mesh.position.x += this.player.speed/Math.sqrt(2);
-            }
-            if (this.control_method.move_downright){     //downright
-                this.player.mesh.position.x += this.player.speed/Math.sqrt(2);
-                this.player.mesh.position.y -= this.player.speed/Math.sqrt(2);
-            }
-            if (this.control_method.move_downleft){     //downleft
-                this.player.mesh.position.y -= this.player.speed/Math.sqrt(2);
-                this.player.mesh.position.x -= this.player.speed/Math.sqrt(2);
-            }
-            if (this.control_method.move_upleft){    //upleft
-                this.player.mesh.position.x -= this.player.speed/Math.sqrt(2);
-                this.player.mesh.position.y += this.player.speed/Math.sqrt(2);
-            }
-        }
-    }
-
     refresh(){
-        this.player.mesh.position.set(this.player.x, this.player.y, 0.00001);
-        this.ball.mesh.position.set(0, 0, 0.00001);
-        this.ball.radian = 0;
-        this.ball.speed = 0;
+        let physics = this.environment.physics;
+        physics.getBodyById(99).position[0] = 0;
+        physics.getBodyById(99).position[1] = 0;
+        physics.getBodyById(99).velocity[0] = 0;
+        physics.getBodyById(99).velocity[1] = 0;
+        physics.getBodyById(21).position[0] = this.player.x;
+        physics.getBodyById(21).position[1] = this.player.y;
+        physics.getBodyById(21).velocity[0] = 0;
+        physics.getBodyById(21).velocity[1] = 0;
     }
 
     remainingTime(){
-        this.remaining_time = this.duration-Math.floor(this.game_clock.getElapsedTime())
+        if(this.action == true){
+            this.remaining_time = this.duration-Math.floor(this.game_clock.getElapsedTime());
+        }else if(this.remaining_time < 0 || this.action == false){
+            this.remaining_time = -1;
+            this.action = false;
+        }
     }
 }}
 
@@ -550,17 +654,99 @@ class Tepique {}
         var time = this.game.remaining_time;
         var minutes = Math.floor(time/60);
         var seconds = time - minutes*60;
+
         if(minutes < 10){
             minutes = "0" + minutes.toString();
         }
         if(seconds < 10){
             seconds = "0" + seconds.toString();
         }
-        this.game_clock.textContent = (time < 0) ? "" : minutes + ":" + seconds;
+
+        this.game_clock.textContent = (time < 0) ? "Game Finished!" : minutes + ":" + seconds;
     }
 }}
 
 {Tepique.Audio = class {
+}}
+
+{Tepique.PhysicsDebug = class {
+    constructor(physics){
+        this.physics = physics;
+        this.width = undefined;
+        this.height = undefined;
+        this.ctx = undefined;
+    }
+
+    create(){
+        var canvas = document.createElement("canvas");
+        document.body.appendChild(canvas);
+        canvas.style.position = "absolute";
+        canvas.style.backgroundColor = "rgba(100,100,100,0.5)";
+        canvas.style.zIndex = "100";
+        canvas.style.left = "0px";
+        canvas.width = window.innerWidth/1.75;
+        canvas.height = window.innerHeight/2;
+    
+        this.width = canvas.width;
+        this.height = canvas.height;
+    
+        this.ctx = canvas.getContext("2d");
+        this.ctx.lineWidth = 0.05;
+    }
+
+    update(){
+        this.ctx.clearRect(0,0,this.width,this.height);
+
+        this.ctx.save();
+        this.ctx.translate(this.width/2, this.height/2);
+        this.ctx.scale(15, -15);
+
+        for (var i = 0; i < this.physics.bodies.length; i++) {
+            let body = this.physics.bodies[i];
+            if(body.name == "player" || body.name == "ball"){
+                this.ctx.strokeStyle = '#000000';
+                this.drawCircle(body);
+            }else if(body.name == "wall"){
+                this.ctx.strokeStyle = '#FFFFFF';
+                this.drawLine(body);
+            }else if(body.name == "goalpost"){
+                this.ctx.strokeStyle = '#D90000';
+                this.drawLine(body);
+            }
+        }
+        this.ctx.restore();
+    }
+
+    drawLine(body){
+        this.ctx.beginPath();
+        this.ctx.save();
+        this.ctx.translate(body.position[0], body.position[1]);
+        if(body.angle == Math.PI/2){
+            this.ctx.moveTo(0, -body.shapes[0].length/2);
+            this.ctx.lineTo(0, body.shapes[0].length/2);
+        }else{
+            this.ctx.moveTo(-body.shapes[0].length/2, 0);
+            this.ctx.lineTo(body.shapes[0].length/2, 0);
+        }
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
+
+    drawCircle(body){
+        this.ctx.beginPath();
+        this.ctx.save();
+        this.ctx.translate(body.position[0], body.position[1]);
+        let radius = body.data.userData;
+        this.ctx.arc(0, 0, radius, 0, 2 * Math.PI);
+        if(body.name == "player"){
+            this.ctx.fillStyle = "yellow";
+        }else{
+            this.ctx.fillStyle = "blue";
+        }
+        this.ctx.fill();
+        this.ctx.stroke();
+        this.ctx.restore();
+    }
 }}
 
 {Tepique.KeyboardControl = class {
