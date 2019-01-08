@@ -75,7 +75,7 @@ class Tepique {}
 }}
 
 {Tepique.Ground = class {
-    constructor(width, height, ground_color, line_color, co_fri){
+    constructor(width, height, ground_color, line_color){
         this.width = width;
         this.height = height;
         this.ground_color = ground_color;
