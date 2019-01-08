@@ -1,8 +1,0 @@
-KEYBOARD CONTROLS
-var keyboard;
-func(){
-    keyboard = new Tepique.KeyboardControl(player);
-}
-animate(){
-    keyboard.control();
-}
