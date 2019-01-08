@@ -26,7 +26,7 @@ class TepiqueServer(BaseHTTPRequestHandler):
             self.send_error(404, "File Not Found")
 
 
-IP = socket.gethostbyname(socket.getfqdn())
+IP = "localhost"
 PORT = 80
 
 server = ThreadingSimpleServer((IP, PORT), TepiqueServer)
