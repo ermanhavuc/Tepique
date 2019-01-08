@@ -666,9 +666,6 @@ class Tepique {}
     }
 }}
 
-{Tepique.Audio = class {
-}}
-
 {Tepique.PhysicsDebug = class {
     constructor(physics){
         this.physics = physics;
