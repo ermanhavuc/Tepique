@@ -57,7 +57,7 @@ class Tepique {}
     }
 
     //sets borders for players and the ball
-    setWalls(physics){
+    setWalls(physics, player_number){
         for(let i=0; i < physics.bodies.length; i++){
             if(physics.bodies[i].name == "wall"){
                 let line = physics.bodies[i];
@@ -68,11 +68,13 @@ class Tepique {}
                     friction: 0
                 }));
                 //setting restitution 0 removes bounce physics for players
-                physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(21).shapes[0].material, {
-                    restitution: 0,
-                    stiffness: Number.MAX_VALUE,
-                    friction: 0
-                }));
+                for(let j = 1; j <= player_number; j++){
+                    physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(20 + j).shapes[0].material, {
+                        restitution: 0,
+                        stiffness: Number.MAX_VALUE,
+                        friction: 0
+                    }));
+                }
             }else if(physics.bodies[i].name == "goalpost"){
                 let line = physics.bodies[i];
                 //when ball met with goalpost walls, don't bounce
@@ -81,11 +83,13 @@ class Tepique {}
                     stiffness: Number.MAX_VALUE,
                     friction: 0
                 }));
-                physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(21).shapes[0].material, {
-                    restitution: 0,
-                    stiffness: Number.MAX_VALUE,
-                    friction: 0
-                }));
+                for(let j = 1; j <= player_number; j++){
+                    physics.addContactMaterial(new p2.ContactMaterial(line.shapes[0].material, physics.getBodyById(20 + j).shapes[0].material, {
+                        restitution: 0,
+                        stiffness: Number.MAX_VALUE,
+                        friction: 0
+                    }));
+                }
             }
         }
     }
@@ -360,31 +364,29 @@ class Tepique {}
 /*  PLAYER CLASS
 *       -creates 3d scene meshes and physics bodies for players
 */
-    constructor(team, number, color, radius, x, y, kickSpeed, mass, damping){
-        this.team = team;
-        this.number = number;
-        this.color = color;
+    constructor(radius, kickSpeed, mass, damping){
         this.radius = radius;
-        this.x = x;
-        this.y = y;
         this.kickSpeed = kickSpeed;
         this.mass = mass;
         this.damping = damping;
     }
 
     //generate 3d scene meshed and physics bodies
-    generate(scene, physics){
+    generate(scene, physics, id){
         let material, geometry;
 
-        var group = new THREE.Group();
-        var rad = this.radius;
-        var num = this.number;
+        let group = new THREE.Group();
+        let rad = this.radius;
 
 
         //MESHES
 
         //central circle with color
-        material = new THREE.MeshBasicMaterial( { color: this.color } );
+        if(id < 4){
+            material = new THREE.MeshBasicMaterial( { color: 0xff4040 } );
+        }else{
+            material = new THREE.MeshBasicMaterial( { color: 0x0080ff } );
+        }
         geometry = new THREE.CircleBufferGeometry( this.radius, 64 );
         group.add(new THREE.Mesh( geometry, material ));
 
@@ -398,7 +400,7 @@ class Tepique {}
         var loader = new THREE.FontLoader();
 
         function createText(font){
-            var geometry = new THREE.TextGeometry( num.toString(), {
+            var geometry = new THREE.TextGeometry( id.toString(), {
                 font: font,
                 size: rad/1.3,
                 height: 0.00001,
@@ -417,8 +419,10 @@ class Tepique {}
 
         //set player position as given parameters. Z position is 0.00001 because the lines on the ground can be see on players
             //without a little heigth
-        group.position.set(this.x, this.y, 0.00001);
-        group.userData = this.radius;   //add player radius to user data
+        let start_x = id < 4 ? -5 : 5;
+        let start_y = id < 4 ? (2-id)*5 : (5-id)*5;
+        group.position.set(start_x, start_y, 0.00001);
+        group.userData = [start_x, start_y, this.radius, this.kickSpeed];   //add player radius to user data
         scene.add(group);   //add to scene
 
 
@@ -438,9 +442,10 @@ class Tepique {}
         player.addShape(player_shape);
         player.data = group;
         player.name = "player";
-        player.id = 21; //player id's start from 21
-        player.position[0] = this.x;
-        player.position[1] = this.y;
+        player.id = id + 20; //player id's start from 21
+        player.position[0] = group.position.x;
+        player.position[1] = group.position.y;
+        //console.log(player.position[0] + " - " + player.position[1]);
         physics.addBody(player);
     }
 }}
@@ -477,7 +482,7 @@ class Tepique {}
         group.add(new THREE.LineLoop( geometry, material ));
 
         group.position.z = 0.00001; //give Z to 0.00001 for avoid ground white lines-ball collision
-        group.userData = this.radius;   //add radius to user data
+        group.userData = [0, 0, this.radius];   //add radius to user data
         scene.add(group);   //add to scene
 
 
@@ -507,13 +512,14 @@ class Tepique {}
 *       -this is main class of all game
 *       -all rules, events and player control mechanisim controlled by this class
 */
-    constructor(environment, ground, goalpost, players, ball, control_method, duration, score_limit){
+    constructor(environment, ground, goalpost, player, ball, control_method, player_number, duration, score_limit){
         this.environment = environment;
         this.ground = ground;
         this.goalpost = goalpost;
-        this.player = players;
+        this.player = player;
         this.ball = ball;
         this.control_method = control_method;
+        this.player_number = player_number;
         this.duration = duration;
         this.score_limit = score_limit;
         this.action = true; //while it is true, game must go on
@@ -527,9 +533,11 @@ class Tepique {}
             environment.create();   //create environment
             ground.generate(environment.scene, environment.physics);    //generate ground
             goalpost.generate(environment.scene, environment.physics);  //goalposts
-            players.generate(environment.scene, environment.physics);   //players
+            for(let i = 1; i <= player_number; i++){
+                player.generate(environment.scene, environment.physics, i);   //players
+            }
             ball.generate(environment.scene, environment.physics);  //ball
-            environment.setWalls(environment.physics);  //set field borders
+            environment.setWalls(environment.physics, player_number);  //set field borders
             control_method.generate();  //generate the control method
         }();
     }
@@ -538,7 +546,7 @@ class Tepique {}
     play(){
         if(this.action){
             this.environment.physics.step(1/60);    //run physics engine
-            this.playerControl();   //run player control method
+            this.playerControl(this.control_method.player_id);   //run player control method
             this.gameAnimation();   //play game animations
             this.kickBall();    //kick ball physics
             this.goal();    //goal detection
@@ -583,16 +591,19 @@ class Tepique {}
     //kick the ball mechanism
     kickBall(){
         let ball = this.environment.physics.getBodyById(99);    //get ball
-        let player = this.environment.physics.getBodyById(21);  //get player
-        let col = this.isCollision(ball, player);
-        //if ball is in kick area and player hit the space or X key, kick
-        if(col == 1 || col == 0){
-            if(this.control_method instanceof Tepique.KeyboardControl && this.control_method.kick){
-                let radian = this.radian(player, ball); //calculate the angle which is shows us the way where ball will go
-                //summing X and Y velocities with kick speed of player multiplying by cos(radian) and sin(radian),
-                //gives ball a new movement
-                ball.velocity[0] = ball.velocity[0] + this.player.kickSpeed * Math.cos(radian);
-                ball.velocity[1] = ball.velocity[1] + this.player.kickSpeed * Math.sin(radian);
+        for(let i=1; i <= this.player_number; i++){
+            let player = this.environment.physics.getBodyById(20+i);  //get player
+            let col = this.isCollision(ball, player);
+            //if ball is in kick area and player hit the space or X key, kick
+            if(col == 1 || col == 0){
+                if(this.control_method instanceof Tepique.KeyboardControl && this.control_method.kick){
+                    let radian = this.radian(player, ball); //calculate the angle which is shows us the way where ball will go
+                    //summing X and Y velocities with kick speed of player multiplying by cos(radian) and sin(radian),
+                    //gives ball a new movement
+                    let kick_speed = player.data.userData[3];   //get kick speed from user data
+                    ball.velocity[0] = ball.velocity[0] + kick_speed * Math.cos(radian);
+                    ball.velocity[1] = ball.velocity[1] + kick_speed * Math.sin(radian);
+                }
             }
         }
     }
@@ -630,51 +641,50 @@ class Tepique {}
     //changes 3d scene object positions related to physics engine positions(this means animation)
     gameAnimation(){
         let ball = this.environment.physics.getBodyById(99);
-        let player = this.environment.physics.getBodyById(21);
-
+        for(let i = 1; i <= this.player_number; i++){
+            let player = this.environment.physics.getBodyById(20+i);
+            player.data.position.x = player.position[0];
+            player.data.position.y = player.position[1];
+        }
         ball.data.position.x = ball.position[0];
         ball.data.position.y = ball.position[1];
-        player.data.position.x = player.position[0];
-        player.data.position.y = player.position[1];
     }
 
     //change player positions due to controller
-    playerControl(){
-        let physics = this.environment.physics;
+    playerControl(id){
         if(this.control_method instanceof Tepique.KeyboardControl){ //keyboard control mechanism
             this.control_method.control();
-            for(let i = 0; i < physics.bodies.length; i++){
-                let body = physics.bodies[i];
 
-                if(body.name == "player"){
-                    if (this.control_method.move_up){    //up
-                        body.force[1] += 5;
-                    }
-                    if (this.control_method.move_right){    //right
-                        body.force[0] += 5;
-                    }
-                    if (this.control_method.move_down){    //down
-                        body.force[1] -= 5;
-                    }
-                    if (this.control_method.move_left){    //left
-                        body.force[0] -= 5;
-                    }
-                    if (this.control_method.move_upright){     //upright
-                        body.force[1] += 5/Math.sqrt(2);
-                        body.force[0] += 5/Math.sqrt(2);
-                    }
-                    if (this.control_method.move_downright){     //downright
-                        body.force[0] += 5/Math.sqrt(2);
-                        body.force[1] -= 5/Math.sqrt(2);
-                    }
-                    if (this.control_method.move_downleft){     //downleft
-                        body.force[1] -= 5/Math.sqrt(2);
-                        body.force[0] -= 5/Math.sqrt(2);
-                    }
-                    if (this.control_method.move_upleft){    //upleft
-                        body.force[0] -= 5/Math.sqrt(2);
-                        body.force[1] += 5/Math.sqrt(2);
-                    }
+            let body = this.environment.physics.getBodyById(20+id);
+
+            if(body.name == "player"){
+                if (this.control_method.move_up){    //up
+                    body.force[1] += 5;
+                }
+                if (this.control_method.move_right){    //right
+                    body.force[0] += 5;
+                }
+                if (this.control_method.move_down){    //down
+                    body.force[1] -= 5;
+                }
+                if (this.control_method.move_left){    //left
+                    body.force[0] -= 5;
+                }
+                if (this.control_method.move_upright){     //upright
+                    body.force[1] += 5/Math.sqrt(2);
+                    body.force[0] += 5/Math.sqrt(2);
+                }
+                if (this.control_method.move_downright){     //downright
+                    body.force[0] += 5/Math.sqrt(2);
+                    body.force[1] -= 5/Math.sqrt(2);
+                }
+                if (this.control_method.move_downleft){     //downleft
+                    body.force[1] -= 5/Math.sqrt(2);
+                    body.force[0] -= 5/Math.sqrt(2);
+                }
+                if (this.control_method.move_upleft){    //upleft
+                    body.force[0] -= 5/Math.sqrt(2);
+                    body.force[1] += 5/Math.sqrt(2);
                 }
             }
         }
@@ -683,14 +693,18 @@ class Tepique {}
     //refresh every object in physics engine
     refresh(){
         let physics = this.environment.physics;
-        physics.getBodyById(99).position[0] = 0;
-        physics.getBodyById(99).position[1] = 0;
-        physics.getBodyById(99).velocity[0] = 0;
-        physics.getBodyById(99).velocity[1] = 0;
-        physics.getBodyById(21).position[0] = this.player.x;
-        physics.getBodyById(21).position[1] = this.player.y;
-        physics.getBodyById(21).velocity[0] = 0;
-        physics.getBodyById(21).velocity[1] = 0;
+        let ball = this.environment.physics.getBodyById(99);
+        ball.position[0] = 0;
+        ball.position[1] = 0;
+        ball.velocity[0] = 0;
+        ball.velocity[1] = 0;
+        for(let i = 1; i <= this.player_number; i++){
+            let player = this.environment.physics.getBodyById(20+i);
+            player.position[0] = player.data.userData[0];
+            player.position[1] = player.data.userData[1];
+            player.velocity[0] = 0;
+            player.velocity[1] = 0;
+        }
     }
 
     //calculate remaining time
@@ -868,7 +882,7 @@ class Tepique {}
         this.ctx.beginPath();
         this.ctx.save();
         this.ctx.translate(body.position[0], body.position[1]);
-        let radius = body.data.userData; //get radiues from user data
+        let radius = body.data.userData[2]; //get radiues from user data
         this.ctx.arc(0, 0, radius, 0, 2 * Math.PI);
         if(body.name == "player"){  //if player - paint yellow, else - paint blue
             this.ctx.fillStyle = "yellow";
@@ -885,7 +899,8 @@ class Tepique {}
 /*  KEYBOARD CONTROL CLASS
 *       -control which key pressed on keyboard and conver it to movement
 */
-    constructor(){
+    constructor(player_id){
+        this.player_id = player_id;
         this.up = false;
         this.down = false;
         this.left = false;

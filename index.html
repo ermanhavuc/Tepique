@@ -21,13 +21,13 @@
                 env = new Tepique.Environment(15);  //camera_position
                 var ground = new Tepique.Ground(30, 15, 0x008000, 0xffffff);    //width, height, ground_color, line_color
                 var goalpost = new Tepique.GoalPost(ground, 0.33, 0xffffff, 0x46aa46);  //ground, ratio, line_color, ground_color
-                //team, number, color, radius, x, y, kickSpeed, mass, damping
-                var player = new Tepique.Player(1, 9, 0xffff00, 0.66, -5, 0, 4, 0.75, 0.75);
-                var ball = new Tepique.Ball(0.35, 0x000080, 0.2, 0.4);  //radius, color, mass, damping
-                keyboard = new Tepique.KeyboardControl();
+                var player = new Tepique.Player(0.66, 4, 0.75, 0.75);   //radius, kickSpeed, mass, damping
+                var ball = new Tepique.Ball(0.35, 0xffffff, 0.2, 0.4);  //radius, color, mass, damping
+                keyboard = new Tepique.KeyboardControl(5);  //player id to control
 
-                game = new Tepique.Game(env, ground, goalpost, player, ball, keyboard, 90, 1);  //
                 //environment, ground, goalpost, players, ball, control_method, duration, score_limit
+                game = new Tepique.Game(env, ground, goalpost, player, ball, keyboard, 6, 90, 2);
+                
                 gui = new Tepique.GUI(game);
                 gui.place();
 
