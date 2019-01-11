@@ -9,6 +9,7 @@ class Tepique {}
     constructor(camera_position){
         this.camera_position = camera_position;
         this.camera = undefined;
+        this.controls = undefined;
         this.scene = undefined;
         this.renderer = undefined;
         this.label_renderer = undefined;
@@ -22,6 +23,7 @@ class Tepique {}
         //set Z-axis camera position
         this.camera.position.z = this.camera_position;
 
+        this.controls = new THREE.OrbitControls( this.camera );
         //create scene
         this.scene = new THREE.Scene();
 
@@ -51,6 +53,7 @@ class Tepique {}
 
         game.play();
         gui.update();
+        this.controls.update();
 
         this.renderer.render( this.scene, this.camera );
         this.label_renderer.render( this.scene, this.camera );
@@ -109,7 +112,7 @@ class Tepique {}
     
     //create 3d scene mesh and physics body
     generate(scene, physics){
-        let material, geometry;
+        let material, geometry, mesh;
         //this group used for assuming all different meshes in one mesh
         let group = new THREE.Group();
 
@@ -146,7 +149,9 @@ class Tepique {}
         //center
         material = new THREE.MeshBasicMaterial( { color: this.line_color } );
         geometry = new THREE.CircleGeometry( circle_radius/10, 64 );
-        group.add(new THREE.Mesh( geometry, material ));
+        mesh = new THREE.Mesh( geometry, material );
+        mesh.position.z = 0.0001;
+        group.add(mesh);
 
         scene.add(group);   //add to scene
         this.mesh = group;
@@ -373,7 +378,7 @@ class Tepique {}
 
     //generate 3d scene meshed and physics bodies
     generate(scene, physics, id){
-        let material, geometry;
+        let material, geometry, mesh;
 
         let group = new THREE.Group();
         let rad = this.radius;
@@ -387,14 +392,19 @@ class Tepique {}
         }else{
             material = new THREE.MeshBasicMaterial( { color: 0x0080ff } );
         }
-        geometry = new THREE.CircleBufferGeometry( this.radius, 64 );
-        group.add(new THREE.Mesh( geometry, material ));
+        geometry = new THREE.CylinderGeometry( this.radius, this.radius, 1, 64 );
+        mesh = new THREE.Mesh( geometry, material );
+        mesh.position.y = 1/2;
+        group.add(mesh);
 
         //border hoop of central circle
         material = new THREE.LineBasicMaterial( { color: 0x000000 } );
         geometry = new THREE.CircleGeometry( this.radius, 64);
         geometry.vertices.shift();
-        group.add(new THREE.LineLoop( geometry, material ));
+        mesh = new THREE.LineLoop( geometry, material );
+        mesh.rotation.x = -Math.PI/2;
+        mesh.position.y = 1.001
+        group.add(mesh);
 
         //print to scene player numbers in player
         var loader = new THREE.FontLoader();
@@ -403,13 +413,14 @@ class Tepique {}
             var geometry = new THREE.TextGeometry( id.toString(), {
                 font: font,
                 size: rad/1.3,
-                height: 0.00001,
+                height: 0.0001,
                 curveSegments: 12,
                 bevelEnabled: false,
             } );
             
             var text = new THREE.Mesh(geometry, material);
-            text.position.set(-rad/3, -rad/3, 0);
+            text.rotation.x = -Math.PI/2;
+            text.position.set(-rad/3, 1.0001, rad/3);
             group.add(text);
         }
         
@@ -417,12 +428,13 @@ class Tepique {}
             createText(response);
         } );
 
-        //set player position as given parameters. Z position is 0.00001 because the lines on the ground can be see on players
+        //set player position as given parameters. Z position is 0.0001 because the lines on the ground can be see on players
             //without a little heigth
         let start_x = id < 4 ? -5 : 5;
         let start_y = id < 4 ? (2-id)*5 : (5-id)*5;
-        group.position.set(start_x, start_y, 0.00001);
+        group.position.set(start_x, start_y, 0.0001);
         group.userData = [start_x, start_y, this.radius, this.kickSpeed];   //add player radius to user data
+        group.rotation.x = Math.PI/2;
         scene.add(group);   //add to scene
 
 
@@ -464,7 +476,7 @@ class Tepique {}
     //create mesh and physics body
     generate(scene, physics){
 
-        let material, geometry;
+        let material, geometry, mesh;
         var group = new THREE.Group();
 
 
@@ -472,16 +484,22 @@ class Tepique {}
 
         //central circle with color
         material = new THREE.MeshBasicMaterial( { color: this.color } );
-        geometry = new THREE.CircleBufferGeometry( this.radius, 64 );
-        group.add(new THREE.Mesh( geometry, material ));
+        geometry = new THREE.CylinderGeometry( this.radius, this.radius, 0.5, 64 );
+        mesh = new THREE.Mesh( geometry, material );
+        mesh.position.y = 0.5/2;
+        group.add(mesh);
 
         //border hoop of central circle
         material = new THREE.LineBasicMaterial( { color: 0x000000 } );
         geometry = new THREE.CircleGeometry( this.radius, 64);
         geometry.vertices.shift();
-        group.add(new THREE.LineLoop( geometry, material ));
+        mesh = new THREE.LineLoop( geometry, material );
+        mesh.rotation.x = -Math.PI/2;
+        mesh.position.y = 0.5001;
+        group.add(mesh);
 
-        group.position.z = 0.00001; //give Z to 0.00001 for avoid ground white lines-ball collision
+        group.position.z = 0.0001; //give Z to 0.0001 for avoid ground white lines-ball collision
+        group.rotation.x = Math.PI/2;
         group.userData = [0, 0, this.radius];   //add radius to user data
         scene.add(group);   //add to scene
 
