@@ -146,6 +146,24 @@ class Tepique {}
         geometry.vertices.push(new THREE.Vector3(-this.width/2, this.height/2, 0));
         group.add(new THREE.Line(geometry, material));
 
+        //walls
+        let wall_height = 0.25;
+        let wall_width = this.width;
+        let wall_depth = 0.40;
+
+        material = new THREE.MeshBasicMaterial( {color: 0xffff64});
+        geometry = new THREE.BoxGeometry(wall_width, wall_height, wall_depth);
+
+        mesh = new THREE.Mesh( geometry, material );
+        mesh.position.y = this.height/2 + wall_height/2;
+        mesh.position.z = wall_depth/2;
+        group.add(mesh);
+
+        mesh = new THREE.Mesh( geometry, material );
+        mesh.position.y = -(this.height/2 + wall_height/2);
+        mesh.position.z = wall_depth/2;
+        group.add(mesh);
+
         //center
         material = new THREE.MeshBasicMaterial( { color: this.line_color } );
         geometry = new THREE.CircleGeometry( circle_radius/10, 64 );
@@ -247,6 +265,16 @@ class Tepique {}
         mesh.position.x = ground_width/2+this.width/2;
         group.add(mesh);
 
+        //walls
+        let wall_height = 0.25;
+        let wall_width = this.width;
+        let wall_depth = 0.40;
+
+        material = new THREE.MeshBasicMaterial( {color: 0xffff64});
+        geometry = new THREE.BoxGeometry(wall_width, wall_height, wall_depth);
+
+        //right upper wall
+
         scene.add(group);   //add to scene
 
 
@@ -257,10 +285,10 @@ class Tepique {}
         //right upper line of ground
         line_shape = new p2.Line({material: new p2.Material()});
         line = new p2.Body({
-            position: [ground_width/2, this.height],
+            position: [ground_width/2, this.getUpperDot()+(ground_height-this.height)/4],
             angle: Math.PI/2
         });
-        line_shape.length = this.height;
+        line_shape.length = (ground_height-this.height)/2;
         line.name = "wall";
         line.addShape(line_shape);
         physics.addBody(line);
